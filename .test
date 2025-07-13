@@ -1,1 +1,8 @@
 test file
+
+  1. Install Flutter SDK from https://flutter.dev
+  2. Navigate to project: cd storyreader/storyreader
+  3. Install dependencies: flutter pub get
+  4. Generate models: flutter packages pub run build_runner build
+  5. Run: flutter run
+
