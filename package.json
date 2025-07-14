@@ -1,0 +1,40 @@
+{
+  "name": "storyreader",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "NODE_ENV=development electron .",
+    "build": "electron-builder",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samratmajumder/visionreader.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/samratmajumder/visionreader/issues"
+  },
+  "homepage": "https://github.com/samratmajumder/visionreader#readme",
+  "dependencies": {
+    "drag-and-drop-files": "^0.0.1",
+    "electron": "^37.2.1",
+    "electron-store": "^10.1.0",
+    "jsdom": "^26.1.0",
+    "jszip": "^3.10.1",
+    "officeparser": "^5.2.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-grid-layout": "^1.5.2",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^8.0.3"
+  }
+}

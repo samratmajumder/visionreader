@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(flutter create:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(mv:*)",
+      "Bash(npm start)",
+      "Bash(rm:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": []
   }

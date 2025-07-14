@@ -1,0 +1,56 @@
+The Story Reader Test
+
+This is a sample story file to test the Story Reader application.
+
+Chapter 1: The Beginning
+
+Once upon a time, in a digital world where stories and media converged, there was a need for a perfect reading application. This application would allow readers to immerse themselves in text while simultaneously viewing related images and videos.
+
+The reader could adjust the font size to their preference, enable auto-scroll for hands-free reading, and organize media in customizable grids. Each grid could contain multiple images or videos, creating playlists that enhanced the storytelling experience.
+
+Chapter 2: The Features
+
+The Story Reader application supported multiple document formats:
+- Microsoft Word documents (.docx)
+- PDF files (.pdf)
+- HTML web pages (.html)
+- Plain text files (.txt)
+
+Media support included:
+- Images: JPG, PNG, GIF, WebP
+- Videos: MP4, AVI, MOV, WebM, MKV
+
+Chapter 3: The Experience
+
+Users could navigate through stories using keyboard shortcuts:
+- Arrow keys for scrolling
+- Page Up/Down for quick navigation
+- Home/End for jumping to beginning/end
+- Auto-scroll with variable speed
+
+The interface was designed with a dark theme for comfortable reading in any lighting condition. Media grids could be resized and repositioned to create the perfect layout for each story.
+
+Chapter 4: The Future
+
+Future enhancements would include:
+- Synchronized media display based on story position
+- Layout templates for different story types
+- Export functionality for sharing configured layouts
+- Reading statistics and progress tracking
+- Bookmarking system for long stories
+- Multiple monitor support for extended layouts
+
+The End
+
+This completes the sample story for testing the Story Reader application. The application successfully combines text reading with multimedia presentation, creating an immersive storytelling experience.
+
+Test various features:
+1. Open this file using the "Open Story" button
+2. Adjust font size using the slider
+3. Enable auto-scroll and adjust speed
+4. Add media grids using the "Add Media Grid" button
+5. Load images and videos into the grids
+6. Test keyboard navigation
+7. Try the media playback controls
+
+The Story Reader represents the future of digital storytelling, where text and media work together to create compelling narratives.

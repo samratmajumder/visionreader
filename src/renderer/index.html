@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Reader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        #root {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 20px;
+            background-color: #2a2a2a;
+            border-bottom: 1px solid #444;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            background-color: #333;
+        }
+
+        .toolbar button {
+            padding: 8px 16px;
+            background-color: #4a4a4a;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .toolbar button:hover {
+            background-color: #5a5a5a;
+        }
+
+        .toolbar button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .toolbar input, .toolbar select {
+            padding: 4px 8px;
+            background-color: #3a3a3a;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+
+        .toolbar input[type="range"] {
+            width: 80px;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .story-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .story-header {
+            padding: 10px 20px;
+            background-color: #2a2a2a;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .story-content-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .story-content {
+            height: 100%;
+            padding: 40px;
+            overflow: auto;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            font-size: 16px;
+            font-family: Georgia, serif;
+            position: relative;
+        }
+
+        .story-content:focus {
+            outline: none;
+        }
+
+        .story-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            flex-direction: column;
+            gap: 20px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .search-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .search-overlay input {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+
+        .search-results {
+            margin-top: 5px;
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .media-panel {
+            width: 40%;
+            display: flex;
+            flex-direction: column;
+            background-color: #1a1a1a;
+            border-left: 1px solid #333;
+            min-width: 300px;
+        }
+
+        .media-header {
+            padding: 10px 20px;
+            background-color: #2a2a2a;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .media-content {
+            flex: 1;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .media-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            flex-direction: column;
+            gap: 10px;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .media-grid {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .media-grid:hover {
+            border-color: #4a4a4a;
+        }
+
+        .media-grid.dragging {
+            border-color: #4a90e2;
+            opacity: 0.8;
+        }
+
+        .media-grid.resizing {
+            border-color: #e24a4a;
+        }
+
+        .media-grid-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background-color: #333;
+            cursor: move;
+            user-select: none;
+        }
+
+        .media-grid-title {
+            font-size: 12px;
+            color: #ccc;
+            font-weight: 500;
+        }
+
+        .media-grid-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .media-grid-controls button {
+            padding: 4px 8px;
+            font-size: 12px;
+            background-color: #4a4a4a;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .media-grid-controls button:hover {
+            background-color: #5a5a5a;
+        }
+
+        .media-grid-content {
+            height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background-color: #1a1a1a;
+        }
+
+        .media-grid-content img,
+        .media-grid-content video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .media-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background-color: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .media-grid-content:hover .media-controls {
+            opacity: 1;
+        }
+
+        .media-controls button {
+            background-color: #4a4a4a;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .media-controls button:hover {
+            background-color: #5a5a5a;
+        }
+
+        .media-playlist {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0,0,0,0.9);
+            padding: 8px;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            width: 150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .media-grid-content:hover .media-playlist {
+            opacity: 1;
+        }
+
+        .playlist-header {
+            font-size: 10px;
+            color: #ccc;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .playlist-item {
+            padding: 4px 8px;
+            margin: 2px 0;
+            background-color: #3a3a3a;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .playlist-item:hover {
+            background-color: #4a4a4a;
+        }
+
+        .playlist-item.active {
+            background-color: #4a90e2;
+        }
+
+        .playlist-item-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .playlist-item-remove {
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            padding: 2px 4px;
+            margin-left: 5px;
+            border-radius: 2px;
+            font-size: 10px;
+        }
+
+        .playlist-item-remove:hover {
+            background-color: #e24a4a;
+            color: white;
+        }
+
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(-45deg, transparent 30%, #666 30%, #666 40%, transparent 40%, transparent 60%, #666 60%, #666 70%, transparent 70%);
+            cursor: nw-resize;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #2a2a2a;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+            color: white;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #ccc;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: #3a3a3a;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .bookmarks-panel {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            width: 300px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .bookmark-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background-color: #3a3a3a;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .bookmark-item:hover {
+            background-color: #4a4a4a;
+        }
+
+        .bookmark-title {
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .bookmark-preview {
+            font-size: 10px;
+            color: #ccc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bookmark-date {
+            font-size: 10px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .highlight {
+            background-color: yellow;
+            color: black;
+        }
+
+        .drag-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(74, 144, 226, 0.1);
+            border: 3px dashed #4a90e2;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .drag-message {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .theme-light {
+            background-color: #ffffff;
+            color: #333333;
+        }
+
+        .theme-light .toolbar,
+        .theme-light .story-header,
+        .theme-light .media-header {
+            background-color: #f5f5f5;
+            border-color: #ddd;
+        }
+
+        .theme-light .media-grid {
+            background-color: #f9f9f9;
+        }
+
+        .theme-light .media-grid-header {
+            background-color: #eee;
+        }
+
+        .theme-sepia {
+            background-color: #f4f3e8;
+            color: #5c4b37;
+        }
+
+        .theme-sepia .story-content {
+            background-color: #f9f8f0;
+        }
+
+        .progress-bar {
+            height: 3px;
+            background-color: #333;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #4a90e2;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <button id="openFile">📖 Open Story</button>
+                <button id="saveLayout">💾 Save Layout</button>
+                <button id="loadLayout">📂 Load Layout</button>
+                <button id="packageLayout">📦 Package</button>
+                <button id="importLayout">📥 Import</button>
+            </div>
+            
+            <div class="toolbar-group">
+                <button id="addGrid">➕ Add Grid</button>
+                <button id="toggleSearch">🔍 Search</button>
+                <button id="addBookmark">🔖 Bookmark</button>
+                <button id="showBookmarks">📚 Bookmarks</button>
+            </div>
+            
+            <div class="toolbar-group">
+                <label>Font:</label>
+                <select id="fontFamily">
+                    <option value="Georgia">Georgia</option>
+                    <option value="Times">Times</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Consolas">Consolas</option>
+                </select>
+                <input type="range" id="fontSize" min="12" max="32" value="16">
+                <span id="fontSizeDisplay">16px</span>
+            </div>
+            
+            <div class="toolbar-group">
+                <label>Theme:</label>
+                <select id="theme">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="sepia">Sepia</option>
+                </select>
+            </div>
+            
+            <div class="toolbar-group">
+                <label>
+                    <input type="checkbox" id="autoScroll" style="margin-right: 4px;">
+                    Auto Scroll
+                </label>
+                <div id="scrollControls" class="hidden">
+                    <label>Speed:</label>
+                    <input type="range" id="scrollSpeed" min="0.5" max="5" step="0.1" value="1">
+                    <span id="scrollSpeedDisplay">1x</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="story-panel">
+                <div class="story-header">
+                    <span id="storyTitle">No story loaded</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+                
+                <div class="story-content-wrapper">
+                    <div id="storyContent" class="story-content hidden" tabindex="0"></div>
+                    <div id="storyPlaceholder" class="story-placeholder">
+                        <div>📖</div>
+                        <div>Open a story file to begin reading</div>
+                        <div style="font-size: 14px; color: #888;">
+                            Supported formats: DOCX, PDF, HTML, TXT
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <button onclick="document.getElementById('openFile').click()" style="padding: 10px 20px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Choose File
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="search-overlay" id="searchOverlay">
+                        <input type="text" id="searchInput" placeholder="Search story...">
+                        <div class="search-results" id="searchResults"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="media-panel">
+                <div class="media-header">
+                    <span>Media Grids</span>
+                    <button id="clearAllGrids">🗑️ Clear All</button>
+                </div>
+                
+                <div class="media-content">
+                    <div id="mediaGrids"></div>
+                    <div id="mediaPlaceholder" class="media-placeholder">
+                        <div>🎬</div>
+                        <div>Add media grids to display images and videos</div>
+                        <div style="margin-top: 10px;">
+                            <button onclick="document.getElementById('addGrid').click()" style="padding: 8px 16px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Add Grid
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bookmarks-panel" id="bookmarksPanel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-weight: 500;">Bookmarks</span>
+                <button onclick="app.hideBookmarks()" style="background: none; border: none; color: #ccc; cursor: pointer;">×</button>
+            </div>
+            <div id="bookmarksList"></div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="saveLayoutModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Save Layout</h3>
+                <button class="modal-close" onclick="app.closeSaveLayoutModal()">×</button>
+            </div>
+            <div class="form-group">
+                <label for="layoutName">Layout Name:</label>
+                <input type="text" id="layoutName" placeholder="Enter layout name">
+            </div>
+            <div class="form-group">
+                <label for="layoutDescription">Description (optional):</label>
+                <textarea id="layoutDescription" placeholder="Describe this layout..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button onclick="app.closeSaveLayoutModal()">Cancel</button>
+                <button onclick="app.saveCurrentLayout()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadLayoutModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Load Layout</h3>
+                <button class="modal-close" onclick="app.closeLoadLayoutModal()">×</button>
+            </div>
+            <div id="layoutsList"></div>
+            <div class="form-actions">
+                <button onclick="app.closeLoadLayoutModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="drag-overlay" id="dragOverlay">
+        <div class="drag-message">
+            Drop media files here to add to grid
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
