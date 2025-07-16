@@ -114,6 +114,22 @@
             position: relative;
         }
 
+        .story-content.auto-scroll-mode {
+            pointer-events: none;
+        }
+
+        .current-line {
+            background-color: rgba(74, 144, 226, 0.2);
+            border-left: 4px solid #4a90e2;
+            padding-left: 10px;
+            margin-left: -14px;
+            transform: scale(1.2);
+            transform-origin: left center;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 10;
+        }
+
         .story-content:focus {
             outline: none;
         }
@@ -162,6 +178,22 @@
             min-width: 300px;
         }
 
+        .grid-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .floating-grid {
+            position: absolute;
+            z-index: 100;
+            min-width: 200px;
+            max-width: 80vw;
+            min-height: 150px;
+            resize: both;
+            overflow: hidden;
+        }
+
         .media-header {
             padding: 10px 20px;
             background-color: #2a2a2a;
@@ -196,6 +228,11 @@
             position: relative;
             border: 2px solid transparent;
             transition: border-color 0.2s;
+        }
+
+        .media-grid.floating {
+            margin-bottom: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
 
         .media-grid:hover {
@@ -374,6 +411,28 @@
             cursor: nw-resize;
         }
 
+        .resize-handle-h {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 10px;
+            height: 30px;
+            background: linear-gradient(0deg, transparent 30%, #666 30%, #666 70%, transparent 70%);
+            cursor: ew-resize;
+        }
+
+        .resize-handle-v {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 10px;
+            background: linear-gradient(90deg, transparent 30%, #666 30%, #666 70%, transparent 70%);
+            cursor: ns-resize;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -509,6 +568,16 @@
             color: black;
         }
 
+        .reading-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #4a90e2;
+            z-index: 5;
+            opacity: 0.7;
+        }
+
         .drag-overlay {
             position: fixed;
             top: 0;
@@ -590,6 +659,7 @@
             
             <div class="toolbar-group">
                 <button id="addGrid">➕ Add Grid</button>
+                <button id="addFloatingGrid">🖼️ Add Floating Grid</button>
                 <button id="toggleSearch">🔍 Search</button>
                 <button id="addBookmark">🔖 Bookmark</button>
                 <button id="showBookmarks">📚 Bookmarks</button>
@@ -640,23 +710,25 @@
                 </div>
                 
                 <div class="story-content-wrapper">
-                    <div id="storyContent" class="story-content hidden" tabindex="0"></div>
-                    <div id="storyPlaceholder" class="story-placeholder">
-                        <div>📖</div>
-                        <div>Open a story file to begin reading</div>
-                        <div style="font-size: 14px; color: #888;">
-                            Supported formats: DOCX, PDF, HTML, TXT
+                    <div class="grid-container" id="gridContainer">
+                        <div id="storyContent" class="story-content hidden" tabindex="0"></div>
+                        <div id="storyPlaceholder" class="story-placeholder">
+                            <div>📖</div>
+                            <div>Open a story file to begin reading</div>
+                            <div style="font-size: 14px; color: #888;">
+                                Supported formats: DOCX, PDF, HTML, TXT
+                            </div>
+                            <div style="margin-top: 20px;">
+                                <button onclick="document.getElementById('openFile').click()" style="padding: 10px 20px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    Choose File
+                                </button>
+                            </div>
                         </div>
-                        <div style="margin-top: 20px;">
-                            <button onclick="document.getElementById('openFile').click()" style="padding: 10px 20px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                Choose File
-                            </button>
+                        
+                        <div class="search-overlay" id="searchOverlay">
+                            <input type="text" id="searchInput" placeholder="Search story...">
+                            <div class="search-results" id="searchResults"></div>
                         </div>
-                    </div>
-                    
-                    <div class="search-overlay" id="searchOverlay">
-                        <input type="text" id="searchInput" placeholder="Search story...">
-                        <div class="search-results" id="searchResults"></div>
                     </div>
                 </div>
             </div>

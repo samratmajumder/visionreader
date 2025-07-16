@@ -19,6 +19,9 @@ class AdvancedStoryReader {
         };
         this.autoScrollInterval = null;
         this.scrollPosition = 0;
+        this.currentLineElement = null;
+        this.storyLines = [];
+        this.currentLineIndex = 0;
         this.draggedGrid = null;
         this.isResizing = false;
         this.dragTarget = null;
@@ -37,6 +40,7 @@ class AdvancedStoryReader {
         this.progressFillEl = document.getElementById('progressFill');
         this.mediaGridsEl = document.getElementById('mediaGrids');
         this.mediaPlaceholderEl = document.getElementById('mediaPlaceholder');
+        this.gridContainerEl = document.getElementById('gridContainer');
         this.searchOverlayEl = document.getElementById('searchOverlay');
         this.searchInputEl = document.getElementById('searchInput');
         this.searchResultsEl = document.getElementById('searchResults');
@@ -65,6 +69,7 @@ class AdvancedStoryReader {
 
         // Grid operations
         document.getElementById('addGrid').addEventListener('click', () => this.addMediaGrid());
+        document.getElementById('addFloatingGrid').addEventListener('click', () => this.addFloatingGrid());
         document.getElementById('clearAllGrids').addEventListener('click', () => this.clearAllGrids());
 
         // Search and bookmarks
@@ -212,7 +217,7 @@ class AdvancedStoryReader {
 
     displayStory() {
         if (this.storyContent) {
-            this.storyContentEl.textContent = this.storyContent;
+            this.prepareStoryForReading();
             this.storyContentEl.classList.remove('hidden');
             this.storyPlaceholderEl.classList.add('hidden');
             this.storyTitleEl.textContent = this.storyFileName || 'Story';
@@ -221,6 +226,19 @@ class AdvancedStoryReader {
             this.updateReadingProgress();
             this.storyContentEl.focus();
         }
+    }
+
+    prepareStoryForReading() {
+        // Split story into lines and wrap each in a span for better control
+        const lines = this.storyContent.split('\n');
+        this.storyLines = lines;
+        this.currentLineIndex = 0;
+        
+        const wrappedContent = lines.map((line, index) => 
+            `<span class="story-line" data-line-index="${index}">${line || '&nbsp;'}</span>`
+        ).join('\n');
+        
+        this.storyContentEl.innerHTML = wrappedContent;
     }
 
     updateReadingProgress() {
@@ -256,10 +274,13 @@ class AdvancedStoryReader {
         
         if (enabled) {
             this.scrollControlsEl.classList.remove('hidden');
+            this.storyContentEl.classList.add('auto-scroll-mode');
             this.startAutoScroll();
         } else {
             this.scrollControlsEl.classList.add('hidden');
+            this.storyContentEl.classList.remove('auto-scroll-mode');
             this.stopAutoScroll();
+            this.clearCurrentLineHighlight();
         }
         
         this.saveSettings();
@@ -282,17 +303,61 @@ class AdvancedStoryReader {
             clearInterval(this.autoScrollInterval);
         }
         
+        // Calculate pixels per line based on font size and line height
+        const lineHeight = Math.round(this.settings.fontSize * 1.6); // 1.6 is the line-height
+        const pixelsPerStep = this.settings.scrollSpeed;
+        
         this.autoScrollInterval = setInterval(() => {
             const maxScroll = this.storyContentEl.scrollHeight - this.storyContentEl.clientHeight;
             
             if (this.scrollPosition >= maxScroll) {
                 this.scrollPosition = 0;
+                this.currentLineIndex = 0;
             } else {
-                this.scrollPosition += this.settings.scrollSpeed;
+                this.scrollPosition += pixelsPerStep;
             }
             
             this.storyContentEl.scrollTop = this.scrollPosition;
+            this.updateCurrentLineHighlight();
         }, 50);
+    }
+
+    updateCurrentLineHighlight() {
+        if (!this.settings.autoScroll || !this.storyLines.length) return;
+        
+        // Calculate which line should be at the center of the viewport
+        const viewportCenter = this.storyContentEl.scrollTop + (this.storyContentEl.clientHeight / 2);
+        const lineHeight = Math.round(this.settings.fontSize * 1.6);
+        const estimatedLineIndex = Math.floor(viewportCenter / lineHeight);
+        
+        // Clamp the line index to valid range
+        const newLineIndex = Math.max(0, Math.min(this.storyLines.length - 1, estimatedLineIndex));
+        
+        if (newLineIndex !== this.currentLineIndex) {
+            this.clearCurrentLineHighlight();
+            this.currentLineIndex = newLineIndex;
+            this.highlightCurrentLine();
+        }
+    }
+
+    highlightCurrentLine() {
+        const lineElement = this.storyContentEl.querySelector(`[data-line-index="${this.currentLineIndex}"]`);
+        if (lineElement) {
+            lineElement.classList.add('current-line');
+            this.currentLineElement = lineElement;
+        }
+    }
+
+    clearCurrentLineHighlight() {
+        if (this.currentLineElement) {
+            this.currentLineElement.classList.remove('current-line');
+            this.currentLineElement = null;
+        }
+        
+        // Clear all current-line classes as backup
+        this.storyContentEl.querySelectorAll('.current-line').forEach(el => {
+            el.classList.remove('current-line');
+        });
     }
 
     stopAutoScroll() {
@@ -300,6 +365,7 @@ class AdvancedStoryReader {
             clearInterval(this.autoScrollInterval);
             this.autoScrollInterval = null;
         }
+        this.clearCurrentLineHighlight();
     }
 
     handleKeyboard(e) {
@@ -394,15 +460,21 @@ class AdvancedStoryReader {
     }
 
     highlightSearchResults(query) {
-        const content = this.storyContentEl.textContent;
+        const lines = this.storyLines;
         const regex = new RegExp(query, 'gi');
-        const highlightedContent = content.replace(regex, '<mark class="highlight">$&</mark>');
+        
+        const highlightedContent = lines.map((line, index) => {
+            const highlightedLine = line.replace(regex, '<mark class="highlight">$&</mark>');
+            return `<span class="story-line" data-line-index="${index}">${highlightedLine || '&nbsp;'}</span>`;
+        }).join('\n');
+        
         this.storyContentEl.innerHTML = highlightedContent;
     }
 
     clearSearchHighlights() {
         if (this.storyContent) {
-            this.storyContentEl.textContent = this.storyContent;
+            this.prepareStoryForReading();
+            this.applyStorySettings();
         }
     }
 
@@ -512,10 +584,17 @@ class AdvancedStoryReader {
             currentIndex: 0,
             isPlaying: false,
             height: 250,
+            width: null,
+            floating: false,
+            position: { x: 0, y: 0 },
             settings: {
                 autoPlay: false,
                 displayTime: 5000,
-                zoom: 'fit'
+                zoom: 'fit',
+                gap: 10,
+                zoomLevel: 1,
+                panX: 0,
+                panY: 0
             }
         };
         
@@ -524,13 +603,66 @@ class AdvancedStoryReader {
         this.updateMediaPlaceholder();
     }
 
+    addFloatingGrid() {
+        const gridId = Date.now();
+        const grid = {
+            id: gridId,
+            title: `Floating Grid ${this.mediaGrids.filter(g => g.floating).length + 1}`,
+            mediaItems: [],
+            currentIndex: 0,
+            isPlaying: false,
+            height: 250,
+            width: 300,
+            floating: true,
+            position: { x: 100 + (this.mediaGrids.filter(g => g.floating).length * 30), y: 100 + (this.mediaGrids.filter(g => g.floating).length * 30) },
+            settings: {
+                autoPlay: false,
+                displayTime: 5000,
+                zoom: 'fit',
+                gap: 10,
+                zoomLevel: 1,
+                panX: 0,
+                panY: 0
+            }
+        };
+        
+        this.mediaGrids.push(grid);
+        this.renderFloatingGrid(grid);
+    }
+
     renderMediaGrid(grid) {
         const gridEl = document.createElement('div');
         gridEl.className = 'media-grid';
         gridEl.id = `grid-${grid.id}`;
         gridEl.style.height = `${grid.height + 50}px`;
         
-        gridEl.innerHTML = `
+        gridEl.innerHTML = this.getGridHTML(grid);
+        
+        this.mediaGridsEl.appendChild(gridEl);
+        this.setupGridDragAndDrop(gridEl);
+    }
+
+    renderFloatingGrid(grid) {
+        const gridEl = document.createElement('div');
+        gridEl.className = 'media-grid floating';
+        gridEl.id = `grid-${grid.id}`;
+        
+        const container = document.createElement('div');
+        container.className = 'floating-grid';
+        container.style.left = `${grid.position.x}px`;
+        container.style.top = `${grid.position.y}px`;
+        container.style.width = `${grid.width}px`;
+        container.style.height = `${grid.height + 50}px`;
+        
+        gridEl.innerHTML = this.getGridHTML(grid);
+        container.appendChild(gridEl);
+        
+        this.gridContainerEl.appendChild(container);
+        this.setupFloatingGridDragAndDrop(container, grid);
+    }
+
+    getGridHTML(grid) {
+        return `
             <div class="media-grid-header">
                 <span class="media-grid-title">${grid.title} (${grid.mediaItems.length} items)</span>
                 <div class="media-grid-controls">
@@ -540,7 +672,7 @@ class AdvancedStoryReader {
                     <button onclick="app.removeMediaGrid(${grid.id})">🗑️</button>
                 </div>
             </div>
-            <div class="media-grid-content" style="height: ${grid.height}px;">
+            <div class="media-grid-content" style="height: ${grid.height}px; gap: ${grid.settings.gap}px;">
                 ${grid.mediaItems.length === 0 ? 
                     '<div style="color: #666; text-align: center;"><div>📷</div><div style="font-size: 12px; margin-top: 5px;">Click + to add media</div></div>' :
                     this.renderMediaItem(grid, grid.mediaItems[grid.currentIndex])
@@ -567,23 +699,28 @@ class AdvancedStoryReader {
                     </div>
                 ` : ''}
             </div>
-            <div class="resize-handle" onmousedown="app.startResize(event, ${grid.id})"></div>
+            ${grid.floating ? `
+                <div class="resize-handle" onmousedown="app.startResize(event, ${grid.id}, 'both')"></div>
+                <div class="resize-handle-h" onmousedown="app.startResize(event, ${grid.id}, 'horizontal')"></div>
+                <div class="resize-handle-v" onmousedown="app.startResize(event, ${grid.id}, 'vertical')"></div>
+            ` : `
+                <div class="resize-handle" onmousedown="app.startResize(event, ${grid.id}, 'vertical')"></div>
+            `}
         `;
-        
-        this.mediaGridsEl.appendChild(gridEl);
-        this.setupGridDragAndDrop(gridEl);
     }
 
     setupGridDragAndDrop(gridEl) {
         const header = gridEl.querySelector('.media-grid-header');
         const content = gridEl.querySelector('.media-grid-content');
         
-        // Grid drag functionality
+        // Grid drag functionality (for non-floating grids)
         let isDragging = false;
         let startY = 0;
         let startTop = 0;
         
         header.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON') return; // Don't drag when clicking buttons
+            
             isDragging = true;
             startY = e.clientY;
             startTop = parseInt(window.getComputedStyle(gridEl).top) || 0;
@@ -609,6 +746,61 @@ class AdvancedStoryReader {
             document.removeEventListener('mouseup', handleMouseUp);
         };
         
+        this.setupMediaDropForContent(content, gridEl);
+    }
+
+    setupFloatingGridDragAndDrop(containerEl, grid) {
+        const gridEl = containerEl.querySelector('.media-grid');
+        const header = gridEl.querySelector('.media-grid-header');
+        const content = gridEl.querySelector('.media-grid-content');
+        
+        // Floating grid drag functionality
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+        
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON') return; // Don't drag when clicking buttons
+            
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = parseInt(window.getComputedStyle(containerEl).left) || 0;
+            startTop = parseInt(window.getComputedStyle(containerEl).top) || 0;
+            gridEl.classList.add('dragging');
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        });
+        
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            const newLeft = Math.max(0, startLeft + deltaX);
+            const newTop = Math.max(0, startTop + deltaY);
+            
+            containerEl.style.left = `${newLeft}px`;
+            containerEl.style.top = `${newTop}px`;
+            
+            grid.position.x = newLeft;
+            grid.position.y = newTop;
+        };
+        
+        const handleMouseUp = () => {
+            isDragging = false;
+            gridEl.classList.remove('dragging');
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+        
+        this.setupMediaDropForContent(content, gridEl);
+    }
+
+    setupMediaDropForContent(content, gridEl) {
         // Media file drop functionality
         content.addEventListener('dragover', (e) => {
             e.stopPropagation();
@@ -630,27 +822,44 @@ class AdvancedStoryReader {
         });
     }
 
-    startResize(e, gridId) {
+    startResize(e, gridId, direction = 'vertical') {
         e.preventDefault();
+        e.stopPropagation();
         
         const grid = this.mediaGrids.find(g => g.id === gridId);
         if (!grid) return;
         
         const gridEl = document.getElementById(`grid-${gridId}`);
         const contentEl = gridEl.querySelector('.media-grid-content');
+        const containerEl = grid.floating ? gridEl.closest('.floating-grid') : gridEl;
         
         gridEl.classList.add('resizing');
         
+        const startX = e.clientX;
         const startY = e.clientY;
         const startHeight = grid.height;
+        const startWidth = grid.width || containerEl.offsetWidth;
         
         const handleMouseMove = (e) => {
+            const deltaX = e.clientX - startX;
             const deltaY = e.clientY - startY;
-            const newHeight = Math.max(150, startHeight + deltaY);
             
-            grid.height = newHeight;
-            contentEl.style.height = `${newHeight}px`;
-            gridEl.style.height = `${newHeight + 50}px`;
+            if (direction === 'vertical' || direction === 'both') {
+                const newHeight = Math.max(150, startHeight + deltaY);
+                grid.height = newHeight;
+                contentEl.style.height = `${newHeight}px`;
+                if (grid.floating) {
+                    containerEl.style.height = `${newHeight + 50}px`;
+                } else {
+                    gridEl.style.height = `${newHeight + 50}px`;
+                }
+            }
+            
+            if ((direction === 'horizontal' || direction === 'both') && grid.floating) {
+                const newWidth = Math.max(200, startWidth + deltaX);
+                grid.width = newWidth;
+                containerEl.style.width = `${newWidth}px`;
+            }
         };
         
         const handleMouseUp = () => {
@@ -667,11 +876,19 @@ class AdvancedStoryReader {
         if (!item) return '';
         
         const filePath = `file://${item.path}`;
+        const transform = `scale(${grid.settings.zoomLevel}) translate(${grid.settings.panX}px, ${grid.settings.panY}px)`;
         
         if (item.type === 'image') {
-            return `<img src="${filePath}" alt="${item.name}" style="object-fit: ${grid.settings.zoom};">`;
+            return `<img src="${filePath}" alt="${item.name}" 
+                style="object-fit: ${grid.settings.zoom}; transform: ${transform}; transition: transform 0.2s;" 
+                onwheel="app.handleMediaZoom(event, ${grid.id})" 
+                onmousedown="app.startMediaPan(event, ${grid.id})">`;
         } else if (item.type === 'video') {
-            return `<video src="${filePath}" ${grid.isPlaying ? 'autoplay' : ''} controls style="object-fit: ${grid.settings.zoom};">`;
+            const autoplay = grid.mediaItems.length === 1 && grid.settings.autoPlay ? 'autoplay loop' : (grid.isPlaying ? 'autoplay' : '');
+            return `<video src="${filePath}" ${autoplay} controls 
+                style="object-fit: ${grid.settings.zoom}; transform: ${transform}; transition: transform 0.2s;" 
+                onwheel="app.handleMediaZoom(event, ${grid.id})" 
+                onmousedown="app.startMediaPan(event, ${grid.id})">`;
         }
         
         return '';
@@ -732,9 +949,14 @@ class AdvancedStoryReader {
     updateMediaGrid(grid) {
         const gridEl = document.getElementById(`grid-${grid.id}`);
         if (gridEl) {
-            gridEl.remove();
+            if (grid.floating) {
+                gridEl.closest('.floating-grid').remove();
+                this.renderFloatingGrid(grid);
+            } else {
+                gridEl.remove();
+                this.renderMediaGrid(grid);
+            }
         }
-        this.renderMediaGrid(grid);
     }
 
     editGridTitle(gridId) {
@@ -749,10 +971,15 @@ class AdvancedStoryReader {
     }
 
     removeMediaGrid(gridId) {
+        const grid = this.mediaGrids.find(g => g.id === gridId);
         this.mediaGrids = this.mediaGrids.filter(g => g.id !== gridId);
         const gridEl = document.getElementById(`grid-${gridId}`);
         if (gridEl) {
-            gridEl.remove();
+            if (grid && grid.floating) {
+                gridEl.closest('.floating-grid').remove();
+            } else {
+                gridEl.remove();
+            }
         }
         this.updateMediaPlaceholder();
     }
@@ -761,6 +988,8 @@ class AdvancedStoryReader {
         if (confirm('Are you sure you want to clear all media grids?')) {
             this.mediaGrids = [];
             this.mediaGridsEl.innerHTML = '';
+            // Clear floating grids
+            this.gridContainerEl.querySelectorAll('.floating-grid').forEach(el => el.remove());
             this.updateMediaPlaceholder();
         }
     }
@@ -1066,6 +1295,84 @@ class AdvancedStoryReader {
         setTimeout(() => {
             notification.remove();
         }, 3000);
+    }
+
+    handleMediaZoom(e, gridId) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const grid = this.mediaGrids.find(g => g.id === gridId);
+        if (!grid || grid.mediaItems.length === 0) return;
+        
+        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+        const newZoom = Math.max(0.5, Math.min(5, grid.settings.zoomLevel + delta));
+        
+        grid.settings.zoomLevel = newZoom;
+        this.updateMediaGrid(grid);
+    }
+
+    startMediaPan(e, gridId) {
+        if (e.button !== 0) return; // Only left mouse button
+        e.preventDefault();
+        
+        const grid = this.mediaGrids.find(g => g.id === gridId);
+        if (!grid || grid.mediaItems.length === 0 || grid.settings.zoomLevel <= 1) return;
+        
+        let isDragging = false;
+        let startX = e.clientX;
+        let startY = e.clientY;
+        let startPanX = grid.settings.panX;
+        let startPanY = grid.settings.panY;
+        
+        const handleMouseMove = (e) => {
+            if (!isDragging) {
+                // Start dragging after a small movement threshold
+                const distance = Math.sqrt(Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2));
+                if (distance > 5) {
+                    isDragging = true;
+                }
+                return;
+            }
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            grid.settings.panX = startPanX + deltaX / grid.settings.zoomLevel;
+            grid.settings.panY = startPanY + deltaY / grid.settings.zoomLevel;
+            
+            this.updateMediaGrid(grid);
+        };
+        
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    configureGrid(gridId) {
+        const grid = this.mediaGrids.find(g => g.id === gridId);
+        if (!grid) return;
+        
+        const autoPlay = grid.mediaItems.length === 1 ? prompt('Enable autoplay for single video? (yes/no)', grid.settings.autoPlay ? 'yes' : 'no') : null;
+        const gap = prompt('Enter gap between media elements (px):', grid.settings.gap.toString());
+        
+        if (autoPlay && grid.mediaItems.length === 1) {
+            grid.settings.autoPlay = autoPlay.toLowerCase() === 'yes';
+        }
+        
+        if (gap && !isNaN(parseInt(gap))) {
+            grid.settings.gap = Math.max(0, parseInt(gap));
+        }
+        
+        // Reset zoom and pan
+        grid.settings.zoomLevel = 1;
+        grid.settings.panX = 0;
+        grid.settings.panY = 0;
+        
+        this.updateMediaGrid(grid);
     }
 
     showError(message) {
